@@ -14,14 +14,43 @@
 
 import logging
 import config
+import json
 import yaml
 import sys
 import os
 import argparse
 
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+install_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.append(install_dir)
 from BenchmarkManager import BenchmarkManager
 
+
+def _filter_comments(f):
+    lines = []
+    for l in f:
+        if l.strip().startswith("#"):
+            continue
+        lines.append(l)
+    return "".join(lines)
+
+
+def _expand_paths(j, base_dir):
+    """If the json object j contains relative paths as value of 'dir' this 
+    value gets replaced by joining base_dir with that path.
+    """
+    assert type(j) in [dict, list], f"unexpected type:{type(j)}"
+    if type(j) == list:
+        for entry in j:
+            _expand_paths(entry, base_dir)
+    else:
+        for attr in j:
+            if type(j[attr]) in [dict, list]:
+                _expand_paths(j[attr], base_dir)
+            elif attr == "dir":
+                p = j[attr]
+                if not os.path.isabs(p):
+                    j[attr] = os.path.join(base_dir,p)
+    return j
 
 def main() -> None:
     """
@@ -37,6 +66,13 @@ def main() -> None:
         ]
     )
 
+    #May be overridden by using the -m|--modules option
+    app_modules = [
+       {"name": "PVC", "module": "applications.PVC.PVC"},
+       {"name": "SAT", "module": "applications.SAT.SAT"},
+       {"name": "TSP", "module": "applications.TSP.TSP"}
+       ]
+
     try:
         benchmark_manager = BenchmarkManager()
 
@@ -44,11 +80,19 @@ def main() -> None:
         parser.add_argument("-c", "--config", help="Provide valid config file instead of interactive mode")
         parser.add_argument('-s', '--summarize', nargs='+', help='If you want to summarize multiple experiments',
                             required=False)
+        parser.add_argument('-m', '--modules', help="Provide a file listing the modules to be loaded")
         args = parser.parse_args()
         benchmark_config = None
         if args.summarize:
             benchmark_manager.summarize_results(args.summarize)
         else:
+            if args.modules:
+                logging.info(f"load application modules configuration from {args.modules}")
+                #preprocess the modules configuration:
+                #   + filter comment lines (lines starting with '#')
+                #   + replace relative paths by taking them relative to the location of the modules configuration file.
+                base_dir = os.path.dirname(args.modules)
+                app_modules = _expand_paths(json.loads(_filter_comments(open(args.modules))), base_dir)
             if args.config:
                 logging.info(f"Provided config file at {args.config}")
                 # Load config
@@ -57,9 +101,9 @@ def main() -> None:
                 # returns JSON object as a dictionary
                 benchmark_config = yaml.load(f, Loader=yaml.FullLoader)
             else:
-                benchmark_config = benchmark_manager.generate_benchmark_configs()
+                benchmark_config = benchmark_manager.generate_benchmark_configs(app_modules)
 
-            benchmark_manager.orchestrate_benchmark(benchmark_config)
+            benchmark_manager.orchestrate_benchmark(benchmark_config, app_modules)
             df = benchmark_manager.load_results()
             benchmark_manager.vizualize_results(df)
     except Exception as e:

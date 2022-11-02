@@ -14,6 +14,7 @@
 
 from abc import ABC, abstractmethod
 from time import time
+from BenchmarkManager import _getInstanceWithSubOptions
 
 
 class Mapping(ABC):
@@ -27,6 +28,7 @@ class Mapping(ABC):
         Constructor method
         """
         self.solver_options = []
+        self.sub_options = None
         super().__init__()
 
     @abstractmethod
@@ -75,6 +77,13 @@ class Mapping(ABC):
         :rtype: dict
         """
         pass
+        
+    def get_submodule(self, solver_option: str) -> any:
+        if self.sub_options is None:
+            return self.get_solver(solver_option)
+        else:
+            return _getInstanceWithSubOptions(self.sub_options, solver_option)
+
 
     @abstractmethod
     def get_solver(self, solver_option: str) -> any:
@@ -95,4 +104,7 @@ class Mapping(ABC):
         :return: list of solvers
         :rtype: list
         """
-        return self.solver_options
+        if self.sub_options is None:
+            return self.solver_options
+        else:
+            return [ o["name"] for o in self.sub_options ]

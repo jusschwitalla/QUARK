@@ -14,6 +14,7 @@
 
 from abc import ABC, abstractmethod
 
+from BenchmarkManager import _getInstanceWithSubOptions
 
 class Application(ABC):
     """
@@ -28,6 +29,7 @@ class Application(ABC):
         self.application_name = application_name
         self.application = None
         self.mapping_options = []
+        self.sub_options = []
         super().__init__()
 
     def get_application(self) -> any:
@@ -124,17 +126,11 @@ class Application(ABC):
         """
         pass
 
-    @abstractmethod
-    def save(self, path) -> None:
-        """
-        Function to save the concrete problem.
-
-        :param path: path of the experiment directory for this run
-        :type path: str
-        :return:
-        :rtype: None
-        """
-        pass
+    def get_submodule(self, mapping_option: str) -> any:
+        if self.sub_options is None:
+            return self.get_mapping(mapping_option)
+        else:
+            return _getInstanceWithSubOptions(self.sub_options, mapping_option)
 
     @abstractmethod
     def get_mapping(self, mapping_option: str) -> any:
@@ -155,4 +151,7 @@ class Application(ABC):
         :return: list of mapping options
         :rtype: list
         """
-        return self.mapping_options
+        if self.sub_options is None:
+            return self.mapping_options
+        else:
+            return [ o["name"] for o in self.sub_options ]

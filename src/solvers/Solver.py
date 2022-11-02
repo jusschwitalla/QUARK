@@ -17,6 +17,7 @@ import logging
 from functools import wraps
 from time import time
 
+from BenchmarkManager import _getInstanceWithSubOptions
 
 class Solver(ABC):
     """
@@ -29,6 +30,7 @@ class Solver(ABC):
         Constructor method
         """
         self.device_options = []
+        self.sub_options = None
         super().__init__()
 
     @abstractmethod
@@ -69,6 +71,13 @@ class Solver(ABC):
         :rtype: dict
         """
         pass
+        
+    def get_submodule(self, device_option: str) -> any:
+        if self.sub_options is None:
+            return self.get_device(device_option)
+        else:
+            return _getInstanceWithSubOptions(self.sub_options, device_option, device_option)
+        
 
     @abstractmethod
     def get_device(self, device_option: str) -> any:
@@ -89,4 +98,7 @@ class Solver(ABC):
         :return: list of devices
         :rtype: list
         """
-        return self.device_options
+        if self.sub_options is None:
+            return self.device_options
+        else:
+            return [ o["name"] for o in self.sub_options ]

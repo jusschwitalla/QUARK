@@ -14,9 +14,12 @@
 
 import glob
 import itertools
+import importlib
 import json
 import logging
+import os.path
 import re
+import sys
 from datetime import datetime
 from pathlib import Path
 import inquirer
@@ -27,15 +30,47 @@ import pandas as pd
 import seaborn as sns
 import yaml
 
-from applications.PVC.PVC import PVC
-from applications.SAT.SAT import SAT
-from applications.TSP.TSP import TSP
 
 matplotlib.rc('font', **{'family': 'serif', 'serif': ['Computer Modern']})
 matplotlib.rc('font', family='serif')
 matplotlib.rcParams['savefig.dpi'] = 300
 sns.set_style('darkgrid')
 sns.color_palette()
+
+install_dir = os.path.dirname(os.path.abspath(__file__))
+
+def _import_class(module_path, class_name, base_dir=None):
+
+    #make sure that base_dir is in the search path. Otherwise
+    #the module imported here might not find its libraries.    
+    if not base_dir is None and not base_dir in sys.path:
+        logging.info(f"append to sys.path: {base_dir}")
+        sys.path.append(base_dir)
+    logging.info(f"import module {module_path}")    
+    module = importlib.import_module(module_path)
+    return vars(module)[class_name]    
+
+def _getInstanceWithSubOptions(options, class_name, *args):
+    for opt in options:
+        if not class_name == opt["name"]:
+            continue
+        clazz = _import_class(opt["module"], class_name, opt.get("dir"))
+        sub_options = None
+        for key in ["mappings","solvers","devices"]:
+            if key in opt:
+                sub_options = opt[key]
+                break
+        instance = clazz(*args)
+        
+        #sub_options inherits 'dir'
+        if not sub_options is None and "dir" in opt:
+            for sub_opt in sub_options:
+                if not "dir" in sub_opt:
+                    sub_opt["dir"] = opt["dir"]
+
+        instance.sub_options = sub_options
+        return instance
+    logging.warn(f"{class_name} not found in {options}")
 
 
 class BenchmarkManager:
@@ -59,7 +94,7 @@ class BenchmarkManager:
         self.repetitions = 1
         self.store_dir = None
 
-    def generate_benchmark_configs(self) -> dict:
+    def generate_benchmark_configs(self, app_modules : list) -> dict:
         """
         Queries the user to get all needed information about application, solver, mapping, device and general settings
         to run the benchmark.
@@ -69,15 +104,13 @@ class BenchmarkManager:
         """
         application_answer = inquirer.prompt([inquirer.List('application',
                                                             message="What application do you want?",
-                                                            choices=['TSP', 'PVC', 'SAT'],
+                                                            choices=[ m["name"] for m in app_modules],
                                                             default='PVC',
                                                             )])
-        if application_answer["application"] == "TSP":
-            self.application = TSP()
-        elif application_answer["application"] == "PVC":
-            self.application = PVC()
-        elif application_answer["application"] == "SAT":
-            self.application = SAT()
+                                                            
+        app_name = application_answer["application"]
+        self.application = _getInstanceWithSubOptions(app_modules, app_name)
+        
 
         application_config = self.application.get_parameter_options()
 
@@ -99,7 +132,8 @@ class BenchmarkManager:
                                                             )])
 
         for mapping_single_answer in mapping_answer["mapping"]:
-            mapping = self.application.get_mapping(mapping_single_answer)
+            
+            mapping = self.application.get_submodule(mapping_single_answer)
 
             mapping_config = mapping.get_parameter_options()
             mapping_config = BenchmarkManager._query_for_config(mapping_config, f"(Option for {mapping_single_answer})")
@@ -114,7 +148,9 @@ class BenchmarkManager:
             }
 
             for solver_single_answer in solver_answer["solver"]:
-                solver = mapping.get_solver(solver_single_answer)
+            
+                solver = mapping.get_submodule(solver_single_answer)
+            
                 solver_config = solver.get_parameter_options()
                 solver_config = BenchmarkManager._query_for_config(solver_config,
                                                                    f"(Option for {solver_single_answer})")
@@ -142,7 +178,7 @@ class BenchmarkManager:
         logging.info(config)
         return config
 
-    def load_config(self, config: dict) -> None:
+    def load_config(self, config: dict, app_modules: list) -> None:
         """
         Uses the config file to generate all class instances needed to run the benchmark.
 
@@ -152,13 +188,9 @@ class BenchmarkManager:
         """
 
         logging.info(config)
-
-        if config["application"]["name"] == "TSP":
-            self.application = TSP()
-        elif config["application"]["name"] == "PVC":
-            self.application = PVC()
-        elif config["application"]["name"] == "SAT":
-            self.application = SAT()
+        
+        app_name = config["application"]["name"]
+        self.application = _getInstanceWithSubOptions(app_modules, app_name)
 
         self.repetitions = int(config["repetitions"])
 
@@ -168,7 +200,7 @@ class BenchmarkManager:
         self.mapping_solver_device_combinations = {}
 
         for mapping_name, mapping_value in config['mapping'].items():
-            mapping = self.application.get_mapping(mapping_name)
+            mapping = self.application.get_submodule(mapping_name)
 
             if len(mapping_value['config'].items()) > 0:
                 keys, values = zip(*mapping_value['config'].items())
@@ -188,7 +220,8 @@ class BenchmarkManager:
                     solver_config = [dict(zip(keys, v)) for v in itertools.product(*values)]
                 else:
                     solver_config = [{}]
-                solver = mapping.get_solver(single_solver['name'])
+                    
+                solver = mapping.get_submodule(single_solver['name'])
                 self.mapping_solver_device_combinations[mapping_name]["solvers"][single_solver['name']] = {
                     "solver_instance": solver,
                     "solver_config": solver_config
@@ -198,7 +231,7 @@ class BenchmarkManager:
                     "devices"] = {}
 
                 for single_device in single_solver["device"]:
-                    device_wrapper = solver.get_device(single_device)
+                    device_wrapper = solver.get_submodule(single_device)
                     self.mapping_solver_device_combinations[mapping_name]["solvers"][single_solver['name']][
                         "devices"][single_device] = device_wrapper
 
@@ -233,7 +266,7 @@ class BenchmarkManager:
         self.store_dir = f"{store_dir}/benchmark_runs/{tag + '-' if not None else ''}{datetime.today().strftime('%Y-%m-%d-%H-%M-%S')}"
         Path(self.store_dir).mkdir(parents=True, exist_ok=True)
 
-    def orchestrate_benchmark(self, config: dict, store_dir: str = None) -> None:
+    def orchestrate_benchmark(self, config: dict, app_modules: list, store_dir: str = None) -> None:
         """
         Executes the benchmarks according to the given settings.
 
@@ -245,7 +278,7 @@ class BenchmarkManager:
         """
         # TODO Make this nicer
 
-        self.load_config(config)
+        self.load_config(config, app_modules)
 
         self._create_store_dir(store_dir, tag=self.application.__class__.__name__.lower())
         logger = logging.getLogger()
@@ -289,6 +322,7 @@ class BenchmarkManager:
                                                 solution_validity, time_to_validation = self.application.validate(
                                                     processed_solution)
                                             except Exception as e:
+                                                logging.exception("Exception on processing the solution")
                                                 solution_validity = False
                                                 time_to_process_solution = None
                                                 time_to_validation = None
