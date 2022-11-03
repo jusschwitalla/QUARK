@@ -21,10 +21,9 @@ import networkx
 import networkx as nx
 import numpy as np
 
+from BenchmarkManager import _import_class
+from applications import Mapping
 from applications.Application import *
-from applications.TSP.mappings.Direct import Direct
-from applications.TSP.mappings.ISING import Ising
-from applications.TSP.mappings.QUBO import Qubo
 
 
 class TSP(Application):
@@ -52,13 +51,13 @@ class TSP(Application):
     def get_solution_quality_unit(self) -> str:
         return "Tour cost"
 
-    def get_mapping(self, mapping_option: str) -> Union[Ising, Qubo, Direct]:
+    def get_mapping(self, mapping_option: str) -> Mapping:
         if mapping_option == "Ising":
-            return Ising()
+            return _import_class("applications.TSP.mappings.ISING", "Ising")()
         elif mapping_option == "Qubo":
-            return Qubo()
+            return _import_class("applications.TSP.mappings.QUBO", "QUBO")()
         elif mapping_option == "Direct":
-            return Direct()
+            return _import_class("applications.TSP.mappings.Direct", "Direct")()
         else:
             raise NotImplementedError(f"Mapping Option {mapping_option} not implemented")
 
@@ -197,7 +196,8 @@ class TSP(Application):
 
         # check validity of solution
         if sum(value == 1 for value in solution.values()) > len(route):
-            logging.warning("Result is longer than route! This might be problematic! ⚠️ ")
+            #jus logging.warning("Result is longer than route! This might be problematic! ⚠️ ")
+            logging.warning("Result is longer than route! This might be problematic!")
             return None, round(time() * 1000 - start_time, 3)
 
         # run heuristic replacing None values
@@ -217,8 +217,10 @@ class TSP(Application):
             route = route[idx:] + route[:idx]
 
         # print route
-        parsed_route = ' →\n'.join([f' Node {visit}' for visit in route])
-        logging.info(f"Route found:\n{parsed_route} 🏁")
+        #jus parsed_route = ' →\n'.join([f' Node {visit}' for visit in route])
+        parsed_route = ' ->\n'.join([f' Node {visit}' for visit in route])
+        #jus logging.info(f"Route found:\n{parsed_route} 🏁")
+        logging.info(f"Route found:\n{parsed_route}")
         return route, round(time() * 1000 - start_time, 3)
 
     def validate(self, solution: list) -> (bool, float):
@@ -236,7 +238,8 @@ class TSP(Application):
         if solution is None:
             return False, round(time() * 1000 - start, 3)
         elif len([node for node in list(nodes) if node not in solution]) == 0:
-            logging.info(f"All {len(solution)} nodes got visited ✅ ")
+            #jus logging.info(f"All {len(solution)} nodes got visited ✅ ")
+            logging.info(f"All {len(solution)} nodes got visited ok ")
             return True, round(time() * 1000 - start, 3)
         else:
             logging.error(f"{len([node for node in list(nodes) if node not in solution])} nodes were NOT visited ❌")
@@ -258,7 +261,8 @@ class TSP(Application):
             dist = self.application[solution[idx + 1]][solution[idx]]
             total_dist += dist['weight']
 
-        logging.info(f"Total distance (without return): {total_dist} 📏 ")
+        #jus logging.info(f"Total distance (without return): {total_dist} 📏 ")
+        logging.info(f"Total distance (without return): {total_dist} ")
 
         # add distance between start and end point to complete cycle
         return_distance = self.application[solution[0]][solution[-1]]['weight']
@@ -266,7 +270,8 @@ class TSP(Application):
 
         # get distance for full cycle
         distance_with_return = total_dist + return_distance
-        logging.info(f"Total distance (including return): {distance_with_return} 📏 ")
+        #jus logging.info(f"Total distance (including return): {distance_with_return} 📏 ")
+        logging.info(f"Total distance (including return): {distance_with_return} ")
 
         return distance_with_return, round(time() * 1000 - start, 3)
 

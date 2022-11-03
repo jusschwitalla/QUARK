@@ -18,9 +18,7 @@ import dwave_networkx as dnx
 import networkx
 
 from applications.Mapping import *
-from solvers.Annealer import Annealer
-from solvers.QBSolv import QBSolv
-
+from solvers.Solver import Solver
 
 class Qubo(Mapping):
     """
@@ -105,11 +103,11 @@ class Qubo(Mapping):
 
         return {"Q": q}, round(time() * 1000 - start, 3)
 
-    def get_solver(self, solver_option: str) -> Union[Annealer, QBSolv]:
+    def get_solver(self, solver_option: str) -> Solver:
 
         if solver_option == "Annealer":
-            return Annealer()
+            return _import_class("solvers.Annealer", "Annealer")()
         elif solver_option == "QBSolv":
-            return QBSolv()
+            return _import_class("solvers.QBSolv","QBSolv")()
         else:
             raise NotImplementedError(f"Solver Option {solver_option} not implemented")
