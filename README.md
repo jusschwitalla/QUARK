@@ -110,6 +110,33 @@ It is also possible to start the script with a config file instead of using the 
 
 > __Note:__ This should only be used by experienced users as invalid values will cause the framework to fail!
 
+
+#### Using your own modules
+You can specify the applications, mappers, solvers and devices that the benchmark manager should work with by
+specifying a module configuration file with the option '-m|--modules'. The module configuration file has to
+be a json file of the form:
+```
+[ 
+  {"name":..., "module":..., "dir":..., "mappings":
+     [
+        {"name":..., "module":..., "dir":..., "solvers":
+           [
+              {"name":..., "module":..., "dir":..., "devices":
+                 [
+                    {"name":..., "module":..., "dir":...},...
+                 ]
+              },...
+           ]
+        },...
+        
+     ]
+  },...
+]
+```
+'name' and 'module' are mandatory and specify the class name and python module, resp..'module'
+has to be specified exactly as you would do it within a python import statement. If 'dir' is not specified the
+module is searched within your python path. Otherwise the module is searched for relative to the directory specified by 'dir'. 
+
 ##### Summarizing multiple existing experiments
 You can also summarize multiple existing experiments like this:
 ```
