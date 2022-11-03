@@ -13,10 +13,11 @@
 #  limitations under the License.
 
 from abc import ABC, abstractmethod
+from typing import final
 
 from BenchmarkManager import _getInstanceWithSubOptions
 
-class Application(ABC):
+class _Application(ABC):
     """
     The application component defines the workload, comprising a dataset of increasing complexity, a validation, and an
     evaluation function.
@@ -27,10 +28,10 @@ class Application(ABC):
         Constructor method
         """
         self.application_name = application_name
-        self.application = None
         self.mapping_options = []
         self.sub_options = []
         super().__init__()
+        
 
     def get_application(self) -> any:
         """
@@ -75,17 +76,6 @@ class Application(ABC):
         """
         pass
 
-    @abstractmethod
-    def generate_problem(self, config) -> any:
-        """
-        Depending on the config this method creates a concrete problem and returns it.
-
-        :param config:
-        :type config: dict
-        :return:
-        :rtype: any
-        """
-        pass
 
     def process_solution(self, solution) -> (any, float):
         """
@@ -155,3 +145,103 @@ class Application(ABC):
             return self.mapping_options
         else:
             return [ o["name"] for o in self.sub_options ]
+
+
+class Application(_Application):
+    def __init__(self, application_name):
+        """
+        Constructor method
+        """
+        self.application = None
+        self.api_version = 1
+        super().__init__(application_name)
+
+    @abstractmethod
+    def generate_problem(self, config) -> any:
+        """
+        Depending on the config this method creates a concrete problem and returns it.
+
+        :param config:
+        :type config: dict
+        :return:
+        :rtype: any
+        """
+        pass
+
+    @abstractmethod
+    def save(self, path) -> None:
+        """
+        Function to save the concrete problem.
+
+        :param path: path of the experiment directory for this run
+        :type path: str
+        :return:
+        :rtype: None
+        """
+        pass
+
+class Application2(_Application):
+    def __init__(self, application_name):
+        """
+        Constructor method
+        """
+        self.problem = None
+        self.api_version = 2
+
+        self.problems = {}
+        self.conf_idx = None
+
+        super().__init__(application_name)
+
+    @abstractmethod
+    def regenerate_on_iteration(self, config) -> bool:
+        """Overwrite this to return True or False dependending on whether the problem should
+        be newly generated on every iteration. Typically this will be set to True if the problem
+        is taken from a statistical ensemble e.g. an erdos-renyi graph.
+        """
+        pass
+
+
+    @final
+    def init_problem(self, config, conf_idx: int, rep_count: int, path):
+        if conf_idx != self.conf_idx:
+            self.problems = {}
+            self.conf_idx = conf_idx
+            
+        key = rep_count if self.regenerate_on_iteration(config) else "dummy"
+        if key in self.problems:
+            self.problem = self.problems[key]
+        else:
+            self.problem = self.generate_problem(config, rep_count)
+            self.problems[key] = self.problem
+            self.save(path, rep_count)
+        return self.problem
+
+    @abstractmethod
+    def generate_problem(self, config, rep_count: int) -> any:
+        """
+        Depending on the config this method creates a concrete problem and returns it.
+
+        :param config:
+        :type config: dict
+        :param rep_count
+        :type int
+        :return:
+        :rtype: any
+        """
+        pass
+
+    @abstractmethod
+    def save(self, path, rep_count: int) -> None:
+        """
+        Function to save the concrete problem.
+
+        :param path: path of the experiment directory for this run
+        :type path: str
+        :param rep_count
+        :type int
+        :return:
+        :rtype: None
+        """
+        pass
+
