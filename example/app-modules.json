@@ -1,0 +1,23 @@
+#
+#
+#
+[
+	{"name":"MaxCut", "module":"quark_example.max_cut.MaxCut", "dir": "src", "mappings":
+	    [
+		{"name": "Direct", "module": "quark_example.max_cut.Direct", "solvers":
+		    [
+			{"name" :"BruteForce", "module":"quark_example.max_cut.brute_force" }
+			]
+		},
+		{"name": "Ising", "module": "quark_example.max_cut.Ising", "solvers":
+		    [
+            {"name":"MAX_CUT_QAOA", "module":"quark_example.solvers.QLM_QAOA_MAX_CUT", "devices":
+			    [
+                {"name":"MY_QLM", "module":"quark_example.devices.QLM"}
+				]
+            }
+			]
+			}
+		]
+	}	   	
+]
