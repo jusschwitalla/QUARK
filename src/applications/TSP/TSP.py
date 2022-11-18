@@ -47,6 +47,7 @@ class TSP(Application):
         Constructor method
         """
         super().__init__("TSP")
+        self.recreateable = True
         self.mapping_options = ["Ising", "Qubo", "Direct"]
 
     def get_solution_quality_unit(self) -> str:

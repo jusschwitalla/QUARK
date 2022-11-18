@@ -27,6 +27,7 @@ class Application(ABC):
         """
         self.application_name = application_name
         self.application = None
+        self.recreateable = False
         self.mapping_options = []
         super().__init__()
 

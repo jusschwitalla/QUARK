@@ -80,6 +80,13 @@ class BenchmarkManager:
             self.application = SAT()
 
         application_config = self.application.get_parameter_options()
+        if self.application.recreateable:
+            assert "recreation" not in application_config, "recreation is a reserved keyword and cannot be used for applications!"
+            # TODO change query that only one is selectable
+            application_config["recreation"] = {
+                "values": [True, False],
+                "description": "Do you want that the application is recreated for every iteration?"
+            }
 
         application_config = BenchmarkManager._query_for_config(application_config,
                                                                 f"(Option for {application_answer['application']})")
@@ -164,6 +171,7 @@ class BenchmarkManager:
 
         # Build all application configs
         keys, values = zip(*config['application']['config'].items())
+        values = [val if isinstance(val, list) else [val] for val in values]
         self.application_configs = [dict(zip(keys, v)) for v in itertools.product(*values)]
         self.mapping_solver_device_combinations = {}
 
@@ -275,6 +283,10 @@ class BenchmarkManager:
                                 for device_name, device_value in solver_value["devices"].items():
                                     device = device_value
                                     for i in range(1, self.repetitions + 1):
+                                        if "recreation" in application_config:
+                                            # TODO: Save application for every iteration
+                                            logging.info(f"Recreation is set to {application_config['recreation']}, recreating the application for every run ")
+                                            problem = self.application.generate_problem(application_config)
                                         mapped_problem, time_to_mapping = mapping.map(problem, mapping_config)
                                         try:
                                             logging.info(
