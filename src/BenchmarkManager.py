@@ -455,6 +455,7 @@ class BenchmarkManager:
                                             logging.info(f"solver_config: {solver_config}")
                                             if device.config:
                                                 logging.info(f"device_config: {device.config}")
+                                            solution_raw, time_to_solve, additional_solver_information = solver.run(
                                                 mapped_problem, device, solver_config, store_dir=path, repetition=i)
                                             processed_solution, time_to_reverse_map = mapping.reverse_map(solution_raw)
                                             try:
