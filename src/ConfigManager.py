@@ -328,7 +328,7 @@ class ConfigManager:
                 answer = checkbox(key=key,
                                   message=f"{prefix} {config_answer['description']}",
                                   choices=config_answer['values'])
-                values = (answer[key],)
+                values = answer[key]
             else:
 
                 choices = [*config_answer['values'], "Custom Input"] if (config_answer.get("custom_input") and
