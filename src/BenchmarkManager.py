@@ -20,6 +20,7 @@ import os.path
 from copy import deepcopy
 from datetime import datetime
 from pathlib import Path
+from qat.core.wrappers.result import State
 from typing import List, Dict
 
 import matplotlib
@@ -351,4 +352,6 @@ class NumpyEncoder(json.JSONEncoder):
             return float(o)
         if isinstance(o, np.ndarray):
             return o.tolist()
+        if isinstance(o, State):
+            return "|%s>"%o.bitstring
         return super(NumpyEncoder).default(o)
