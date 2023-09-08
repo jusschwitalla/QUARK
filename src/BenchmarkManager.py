@@ -153,6 +153,7 @@ class BenchmarkManager:
 
                     except Exception as error:
                         logging.exception(f"Error during benchmark run: {error}", exc_info=True)
+                        raise error
 
                 for record in benchmark_records:
                     record.sum_up_times()
