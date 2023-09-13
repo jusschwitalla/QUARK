@@ -138,14 +138,15 @@ class BenchmarkManager:
                                                                          i, repetitions)
                         self.application.metrics.set_module_config(backlog_item["config"])
                         problem, preprocessing_time = self.application.preprocess(None, backlog_item["config"],
-                                                                                  store_dir=path,rep_count = i)
+                                                                                  store_dir=path, rep_count=i)
                         self.application.metrics.set_preprocessing_time(preprocessing_time)
                         self.application.save(path, i)
 
                         processed_input, benchmark_record = self.traverse_config(backlog_item["submodule"], problem,
                                                                                  path, rep_count=i)
 
-                        _, postprocessing_time = self.application.postprocess(processed_input, None, store_dir=path, rep_count =i)
+                        _, postprocessing_time = self.application.postprocess(processed_input, None, store_dir=path,
+                                                                              rep_count=i)
                         self.application.metrics.set_postprocessing_time(postprocessing_time)
                         self.application.metrics.validate()
                         benchmark_record.append_module_record_left(deepcopy(self.application.metrics))
@@ -179,6 +180,8 @@ class BenchmarkManager:
         :type input_data: any
         :param path: Path in case the modules want to store anything
         :type path: str
+        :param rep_count: The iteration count
+        :type rep_count: int
         :return: tuple with the output of this step and the according BenchmarkRecord
         :rtype: tuple(any, BenchmarkRecord)
         """
@@ -190,7 +193,8 @@ class BenchmarkManager:
         module_instance.metrics.set_module_config(module["config"])
         module_instance.preprocessed_input, preprocessing_time = module_instance.preprocess(input_data,
                                                                                             module["config"],
-                                                                                            store_dir=path, rep_count=rep_count)
+                                                                                            store_dir=path,
+                                                                                            rep_count=rep_count)
         module_instance.metrics.set_preprocessing_time(preprocessing_time)
 
         # Check if end of the chain is reached
@@ -198,14 +202,15 @@ class BenchmarkManager:
             # If we reach the end of the chain we create the benchmark record, fill it and then pass it up
             benchmark_record = self.benchmark_record_template.copy()
             module_instance.postprocessed_input, postprocessing_time = module_instance.postprocess(
-                module_instance.preprocessed_input, module["config"])
+                module_instance.preprocessed_input, module["config"], store_dir=path, rep_count=rep_count)
 
         else:
             processed_input, benchmark_record = self.traverse_config(module["submodule"],
                                                                      module_instance.preprocessed_input, path, rep_count)
             module_instance.postprocessed_input, postprocessing_time = module_instance.postprocess(processed_input,
                                                                                                    module["config"],
-                                                                                                   store_dir=path, rep_count=rep_count)
+                                                                                                   store_dir=path,
+                                                                                                   rep_count=rep_count)
 
         output = module_instance.postprocessed_input
         module_instance.metrics.set_postprocessing_time(postprocessing_time)
