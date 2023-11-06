@@ -44,7 +44,6 @@ def _get_instance_with_sub_options(options: list[dict], name: str) -> any:
             sub_options = opt["submodules"]
 
         # In case the class requires some arguments in its constructor they can be defined in the "args" dict
-        logging.warning(f"going to initialize {class_name}")
         if "args" in opt and opt["args"]:
             instance = clazz(**opt["args"])
         else:
