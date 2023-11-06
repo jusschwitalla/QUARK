@@ -25,10 +25,11 @@ class Application(Core, ABC):
         """
         Constructor method
         """
-        self.application_name = application_name
+        super().__init__(application_name)
+
+        self.application_name = self.name
         self.application = None
 
-        super().__init__()
 
     def get_application(self) -> any:
         """
