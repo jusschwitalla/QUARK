@@ -213,9 +213,17 @@ class BenchmarkManager:
                 module_instance.preprocessed_input, module["config"], store_dir=path, rep_count=rep_count)
 
         else:
-            processed_input, benchmark_record = self.traverse_config(module["submodule"],
-                                                                     module_instance.preprocessed_input, path,
-                                                                     rep_count)
+            if hasattr(module_instance,"concat_submodules"):
+                processed_input, benchmark_record = module_instance.concat_submodules(call_submodule = self.traverse_config, 
+                                                                                      module["submodule"],
+                                                                                      module_instance.preprocessed_input, 
+                                                                                      path,
+                                                                                      rep_count
+                                                                                      )
+            else:
+                processed_input, benchmark_record = self.traverse_config(module["submodule"],
+                                                                        module_instance.preprocessed_input, path,
+                                                                        rep_count)
             module_instance.postprocessed_input, postprocessing_time = module_instance.postprocess(processed_input,
                                                                                                    module["config"],
                                                                                                    store_dir=path,
