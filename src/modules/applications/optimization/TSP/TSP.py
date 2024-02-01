@@ -198,7 +198,7 @@ class TSP(Optimization):
         route: list = [None] * len(self.application)
         # get nodes from sample
         # NOTE: Prevent duplicate node entries by enforcing only one occurrence per node along route
-        logging.info(str(solution.items()))
+        # logging.info(str(solution.items()))
 
         for (node, timestep), val in solution.items():
             if val:
