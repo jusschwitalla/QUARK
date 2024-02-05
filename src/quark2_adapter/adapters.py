@@ -121,6 +121,7 @@ class ApplicationAdapter(Application_NEW, Application_OLD, ABC):
             self.problem = self.generate_problem(config, rep_count)
             creation_time = (time() - start)*1000
             self.problems[problem_key] = (self.problem, creation_time)
+        self.metrics.add_metric("problem_instance", str(self.problem) )
         return self.problem, creation_time
 
     def postprocess(self, input_data: any, config: dict, **kwargs) -> (any, float):
