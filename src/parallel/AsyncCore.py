@@ -224,6 +224,7 @@ class AsyncPOCDevice(AsyncCore, MyQLMDigitalQPU):
 
     def __init__(self, device_name):
         super().__init__(
+            name=device_name,
             interruptable="PRE"
         )  # "PRE", "POST" oder "PREPOST" (searches for substring)
 

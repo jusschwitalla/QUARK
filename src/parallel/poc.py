@@ -67,6 +67,12 @@ class AsyncPreprocessForPoc(AsyncCore):
 
     JobManager = MyJobManager
 
+    def __init__(self):
+        super().__init__(
+            interruptable="PRE"
+        )  # "PRE", "POST" oder "PREPOST" (searches for substring)
+
+    
     def get_default_submodule(self, option: str) -> Core:
         pass
 
@@ -106,6 +112,10 @@ class AsyncPostprocessForPoc(AsyncCore):
     """
 
     JobManager = MyJobManager
+    def __init__(self):
+        super().__init__(
+            interruptable="POST"
+        )  # "PRE", "POST" oder "PREPOST" (searches for substring)
 
     def get_default_submodule(self, option: str) -> Core:
         pass
