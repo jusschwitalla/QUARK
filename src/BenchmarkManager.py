@@ -196,10 +196,20 @@ class BenchmarkManager:
                         # getting information of interrupted jobs
                         job_no = (idx_backlog*repetitions + i)
                         if self.async_job_info:
+                            if job_no > len(self.async_job_info):
+                                # This happens if submission of this backlog item was aborted by KeyboardInterrupt
+                                quark_job_status = JobStatus.SKIPPED
+                                logging.info("job submission was unsuccessful. Skipping.")
+                                continue
                             job_info = self.async_job_info[job_no-1]['module']
                         else:
                             job_info = {}
-
+                        if job_info.get("quark_job_status") == JobStatus.FINISHED.name:
+                            benchmark_records.append(self.async_job_info[job_no-1])
+                            quark_job_status = JobStatus.FINISHED
+                            logging.info("job already FINISHED. Skipping evaluation.")
+                            continue
+                        
                         self.benchmark_record_template = BenchmarkRecord(idx_backlog,
                                                                          datetime.today().strftime('%Y-%m-%d-%H-%M-%S'),
                                                                          git_revision_number, git_uncommitted_changes,
@@ -239,17 +249,20 @@ class BenchmarkManager:
                     except Exception as error:
                         logging.exception(f"Error during benchmark run: {error}", exc_info=True)
                         quark_job_status = JobStatus.FAILED
+                        # self.async_job_info[job_no-1]["quark_job_status"] = JobStatus.FAILED
+                        benchmark_records.append(self.async_job_info[job_no-1])
                         if self.fail_fast:
                             raise
 
                 for record in benchmark_records:
-                    record.sum_up_times()
+                    if isinstance(record, BenchmarkRecord):
+                        record.sum_up_times()
 
                 # Wait until all MPI processes have finished and save results on rank 0
                 comm.Barrier()
                 if comm.Get_rank() == 0:
                     with open(f"{path}/results.json", 'w') as filehandler:
-                        json.dump([x.get() for x in benchmark_records], filehandler, indent=2, cls=NumpyEncoder)
+                        json.dump([(x.get() if isinstance(x, BenchmarkRecord) else x) for x in benchmark_records], filehandler, indent=2, cls=NumpyEncoder)
 
                 logging.info("")
                 logging.info(f" =============== Run {quark_job_status.name} =============== ")
