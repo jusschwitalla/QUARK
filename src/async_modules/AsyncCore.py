@@ -48,21 +48,30 @@ class AsyncCore(Core, ABC):
 
     JobManager = AsyncJobManager
 
-    def __init__(self, interruptable: str, name: str = None):
+    def __init__(self, interruptable, name: str = None):
+        """
+        :param interruptable: a single ModuleStage, or a single stage name or a list of these
+        """
         Core.__init__(self, name)
-        self.interruptable = [
-            stage for stage in ModuleStage if stage.name in interruptable
-        ]
+        if isinstance(interruptable, ModuleStage ):
+            self.interruptable_stages = [interruptable]
+        else:
+            # note that this also works if interruptable is a single string
+            self.interruptable_stages = [
+                stage for stage in ModuleStage if stage.name in interruptable or stage in interruptable
+            ]
+        assert len(self.interruptable_stages) in (1, 2)
+        self.use_param_name_postfix = len(self.interruptable_stages) == 2
 
     def get_parameter_options(self) -> dict:
         return {
-            f"async-{interruptable_stage.name.lower()}": dict(
+            f"async-{interruptable_stage.name.lower()}" if self.use_param_name_postfix else "async": dict(
                 {
                     "values": [True, False],
-                    "description": f"Choose if {interruptable_stage.name.lower()}process should run in parallel mode",
+                    "description": f"Choose if {interruptable_stage.name.lower()}_process should run in asynchronous mode",
                 }
             )
-            for interruptable_stage in self.interruptable
+            for interruptable_stage in self.interruptable_stages
         }
 
     # @ not final, since it is possible to define preprocess async and postprocess sequentially and v.v.
@@ -84,10 +93,8 @@ class AsyncCore(Core, ABC):
         returns the AsyncJobManager or the result
         """
 
-        # check if *process is configured to run asynchron, else fallback to Core
-        async_mode_conf = f"async-{stage.name.lower()}"
-        async_mode = config.get(async_mode_conf, None)
-        if async_mode == None:
+        # check if *process is configured to support async-mode, else fallback to Core
+        if stage not in self.interruptable_stages:
             if stage == ModuleStage.PRE:
                 return Instruction.PROCEED, *super().preprocess(
                     input_data, config, **kwargs
@@ -96,6 +103,9 @@ class AsyncCore(Core, ABC):
                 return Instruction.PROCEED, *super().postprocess(
                     input_data, config, **kwargs
                 )
+
+        async_mode_conf_key = f"async-{stage.name.lower()}" if self.use_param_name_postfix else "async"
+        async_mode = config.get(async_mode_conf_key, False)
 
         previous_job_info = kwargs.get("previous_job_info", dict())
 
@@ -125,7 +135,7 @@ class AsyncCore(Core, ABC):
             logging.info("Resuming previous run with job_info = %s", prev_run_job_info)
             job_manager.set_info(**prev_run_job_info)
             return self._collect(stage, job_manager)
-        raise NotImplementedError("HOWWW")
+        assert False, "Not expected to be here."
 
     def _submit(
         self, stage: ModuleStage, job_manager: AsyncJobManager
@@ -184,14 +194,19 @@ class AsyncCore(Core, ABC):
 
         return Instruction.PROCEED, result, job_manager.runtime
 
-    def sync_run(self, stage: ModuleStage, job_manager: AsyncJobManager):
+    # TODO: currently inconsistent: sync_run is one method which gets the stage as argument
+    # whereas submit and collect exist in two variants one or PRE and one for POST
+    # It probably would be better to make it the same way as with sync_run - i.e. one submit and
+    # one collect method which both get the stage as argument.
+
+    def sync_run(self, stage: ModuleStage, job_manager: AsyncJobManager) -> [Instruction, any, float]:
         """default method is running submit and collect consecutively
         but for some applications a more efficient implementation can be written
         by overwriting this function"""
         self._submit(stage, job_manager)
         return self._collect(stage, job_manager, wait_until_finish=True)
 
-    def submit_preprocess(self, job, config, **kwargs):
+    def submit_preprocess(self, input, config, **kwargs):
         """interface: overwrite this method to a module specific submission.
         return value is supposed to be the answer of the server call when submitting
 
@@ -211,7 +226,7 @@ class AsyncCore(Core, ABC):
         """interface: overwrite this method to a module specific collect-call"""
         return server_result
 
-    def submit_postprocess(self, job, config, **kwargs):
+    def submit_postprocess(self, input, config, **kwargs):
         raise NotImplementedError(
             "If you want to run postprocess asynchron, "
             "you need to implement a submit_postprocess method in {self.__class__.__name__}"
