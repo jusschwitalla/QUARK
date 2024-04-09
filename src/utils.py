@@ -143,7 +143,7 @@ def get_git_revision(git_dir: str) -> (str, str):
             ['git', '-C', git_dir, 'status', '--porcelain', '--untracked-files=no']).decode(
             'ascii').strip())
 
-        logging.info(
+        logging.debug(
             f"Codebase is based on revision {git_revision_number} and has "
             f"{'some' if git_uncommitted_changes else 'no'} uncommitted changes")
     except Exception as e:

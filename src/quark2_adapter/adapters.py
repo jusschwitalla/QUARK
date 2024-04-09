@@ -52,7 +52,7 @@ class ApplicationAdapter(Application_NEW, Application_OLD, ABC):
         """
         Constructor method
         """
-        logging.warning(WARNING_MSG,  self.__class__.__name__)
+        # logging.warning(WARNING_MSG,  self.__class__.__name__)
         Application_NEW.__init__(self, application_name)
         Application_OLD.__init__(self, application_name)
         self.args = args
@@ -100,7 +100,7 @@ class ApplicationAdapter(Application_NEW, Application_OLD, ABC):
         :rtype: (any, float)
         """
         start = time()
-        logging.warning(WARNING_MSG, self.__class__.__name__)
+        # logging.warning(WARNING_MSG, self.__class__.__name__)
 
         rep_count = kwargs["rep_count"]
 
@@ -204,7 +204,7 @@ class MappingAdapter(Mapping_NEW, Mapping_OLD, ABC):
         """
         Implements Mapping_NEW.preprocess using the Mapping_OLD interface.
         """
-        logging.warning(WARNING_MSG, self.__class__.__name__)
+        # logging.warning(WARNING_MSG, self.__class__.__name__)
         return self.map(input_data, config=config)
 
     def postprocess(self, input_data: any, config: dict, **kwargs) -> (any, float):
@@ -304,7 +304,7 @@ class SolverAdapter(Solver_NEW, Solver_OLD, ABC):
         :return: The output of the preprocessing and the time it took to preprocess
         :rtype: (any, float)
         """
-        logging.warning(WARNING_MSG, self.__class__.__name__)
+        # logging.warning(WARNING_MSG, self.__class__.__name__)
         return input_data, 0.0
 
     def postprocess(self, input_data: any, config: dict, **kwargs) -> (any, float):
@@ -393,7 +393,7 @@ class DeviceAdapter(Device_NEW, Device_OLD):
         :return: The output of the preprocessing and the time it took to preprocess
         :rtype: (any, float)
         """
-        logging.warning(WARNING_MSG, self.__class__.__name__)
+        # logging.warning(WARNING_MSG, self.__class__.__name__)
         self.set_config(config)
         return {"mapped_problem": input_data, "device": self}, 0.
 
