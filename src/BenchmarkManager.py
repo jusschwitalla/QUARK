@@ -287,7 +287,8 @@ class BenchmarkManager:
                     quark_job_status = JobStatus.FAILED
                     if job_info:
                         # restore results/infos from previous run
-                        benchmark_records.append(job_info)
+                        benchmark_records.append(
+                            BenchmarkRecordStored(job_info_with_meta_data))
                     if self.fail_fast:
                         raise
 
@@ -295,10 +296,13 @@ class BenchmarkManager:
                 job_status_count_total[quark_job_status] = job_status_count_total.get(quark_job_status, 0) + 1
 
             for record in benchmark_records:
-                record.sum_up_times()
+                try:
+                    record.sum_up_times()
+                except AttributeError:
+                    pass
 
-            for record in benchmark_records:
-                record.sum_up_times()
+            # for record in benchmark_records:
+            #     record.sum_up_times()
 
             status_report = " ".join([f"{status.name}:{count}" for status, count in job_status_count.items()])
             logging.info("")
