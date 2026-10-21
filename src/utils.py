@@ -12,6 +12,7 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
+from typing import Callable, ParamSpec, Concatenate, TypeVar
 import importlib
 import logging
 import os
@@ -204,7 +205,13 @@ def end_time_measurement(start: float) -> float:
     return round((end - start) * 1000, 3)
 
 
-def stop_watch(position: int = None) -> Callable:
+Param = ParamSpec("Param")
+RetType = TypeVar("RetType")
+InQDS = TypeVar("InQDS")
+OutQDS = TypeVar("OutQDS")
+
+
+def stop_watch() -> Callable[[Callable[Param, RetType]], Callable[Concatenate[float, Param], RetType]]:
     """
     Usage as decorator to measure time, eg:
     ```
@@ -212,7 +219,7 @@ def stop_watch(position: int = None) -> Callable:
     def run(input_data,...):
         return processed_data
     ```
-    results in valid:    
+    results invalid:    
     ```
     processed_data, time_to_process = run(input,...)
     ```
@@ -226,15 +233,15 @@ def stop_watch(position: int = None) -> Callable:
     :return: The wrapper function
     :rtype: Callable
     """
-    def wrap(func):
-        def wrapper(*args, **kwargs):
+    def decorator(func: Callable[Param, RetType]) -> Callable[Concatenate[float, Param], RetType]:
+        def wrapper(input_data: InQDS, config: dict, **kwargs) -> tuple[OutQDS, float]:
             start = start_time_measurement()
-            return_value = func(*args, **kwargs)
-            duration = end_time_measurement(start)
-            if position is not None and isinstance(return_value, tuple):
-                rv = list(return_value)
-                rv.insert(position, duration)
-                return tuple(rv)
+            return_value: OutQDS = func(input_data: InQDS, config, **kwargs)
+            duration: float = end_time_measurement(start)
+            # if position is not None and isinstance(return_value, tuple):
+            #     rv = list(return_value)
+            #     rv.insert(position, duration)
+            #     return tuple(rv)
             return return_value, duration
         return wrapper
-    return wrap
+    return decorator
