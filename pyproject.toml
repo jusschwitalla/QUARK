@@ -1,0 +1,21 @@
+# Local packaging for editable installs (pip install -e). Not part of upstream QUARK.
+# Maps the existing src/ layout as is; no code changes. Pinned fork commit: 8636cb3a.
+[build-system]
+requires = ["setuptools>=64"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "quark-framework"
+version = "0.0.0+8636cb3a"
+requires-python = ">=3.9"
+dependencies = []  # installed from the environment requirements for now
+
+[tool.setuptools]
+package-dir = { "" = "src" }
+py-modules = ["BenchmarkManager", "BenchmarkRecord", "ConfigManager", "Installer", "main",
+              "Metrics", "Plotter", "utils", "utils_mpi"]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["modules*", "demo*", "quark2_adapter*"]
+namespaces = true
